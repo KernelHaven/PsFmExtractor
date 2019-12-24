@@ -42,7 +42,7 @@ public class PsFmExtractor extends AbstractVariabilityModelExtractor {
 
     @Override
     protected @Nullable VariabilityModel runOnFile(@NonNull File target) throws ExtractorException {
-        // TODO Auto-generated method stub
+        XMLParser fm1 = new XMLParser(xfmFile);
         return null;
     }
 

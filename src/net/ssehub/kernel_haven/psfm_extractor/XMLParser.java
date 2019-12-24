@@ -15,11 +15,41 @@
  */
 package net.ssehub.kernel_haven.psfm_extractor;
 
+import java.io.File;
+import java.io.IOException;
+
+import javax.xml.parsers.*;
+
+import org.w3c.dom.Document;
+import org.xml.sax.SAXException;
+
 /**
- * XML Parser that reads an xfm file and creates a DOM from it
+ * XML Parser that reads an xfm file and creates a DOM from it.
  *
  * @author Calvin Hansch
  */
 class XMLParser {
-
+    private File xfmFile;
+    
+    /**
+     * Create a new XMLParser.
+     * @param xfmFile File to be parsed
+     */
+    public XMLParser(File xfmFile) {
+        this.xfmFile = xfmFile;
+    }
+    
+    /**
+     * Parse the XML File using DOMParser.
+     * @throws IOException 
+     * @throws SAXException 
+     * @throws ParserConfigurationException 
+     * @throws  
+     */
+    public void parse() throws ParserConfigurationException, SAXException, IOException {
+        DocumentBuilderFactory dbf  =
+                DocumentBuilderFactory.newInstance();
+        DocumentBuilder builder = dbf .newDocumentBuilder();
+        Document doc = builder.parse(xfmFile);
+    }
 }
