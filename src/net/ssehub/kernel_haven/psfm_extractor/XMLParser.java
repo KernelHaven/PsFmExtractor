@@ -21,6 +21,7 @@ import java.io.IOException;
 import javax.xml.parsers.*;
 
 import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 /**
@@ -40,16 +41,33 @@ class XMLParser {
     }
     
     /**
-     * Parse the XML File using DOMParser.
+     * Returns cm:elements Nodes from the xfm File.
      * @throws IOException 
      * @throws SAXException 
      * @throws ParserConfigurationException 
-     * @throws  
+     * @return NodeList containing <cm:element>  
      */
-    public void parse() throws ParserConfigurationException, SAXException, IOException {
+    private NodeList getCmElement() throws ParserConfigurationException, SAXException, IOException {
         DocumentBuilderFactory dbf  =
                 DocumentBuilderFactory.newInstance();
-        DocumentBuilder builder = dbf .newDocumentBuilder();
+        DocumentBuilder builder = dbf.newDocumentBuilder();
         Document doc = builder.parse(xfmFile);
+        doc.getDocumentElement();
+        NodeList nodeList = doc.getElementsByTagName("cm:element");
+        
+        
+        return nodeList;
+    }
+    
+    /**
+     * Parse the feature model from the xfmFile.
+     * @throws IOException 
+     * @throws SAXException 
+     * @throws ParserConfigurationException 
+     */
+    public void parse() throws ParserConfigurationException, SAXException, IOException {
+        NodeList nList = this.getCmElement();
+        
+        System.out.println(nList.getLength());
     }
 }
