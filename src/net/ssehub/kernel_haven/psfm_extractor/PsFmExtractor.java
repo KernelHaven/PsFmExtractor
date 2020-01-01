@@ -17,15 +17,24 @@ package net.ssehub.kernel_haven.psfm_extractor;
 
 
 import java.io.File;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.xml.parsers.ParserConfigurationException;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
 
 import net.ssehub.kernel_haven.SetUpException;
 import net.ssehub.kernel_haven.config.Configuration;
 import net.ssehub.kernel_haven.config.DefaultSettings;
-import net.ssehub.kernel_haven.util.ExtractorException;
 import net.ssehub.kernel_haven.util.null_checks.NonNull;
 import net.ssehub.kernel_haven.util.null_checks.Nullable;
 import net.ssehub.kernel_haven.variability_model.AbstractVariabilityModelExtractor;
+import net.ssehub.kernel_haven.variability_model.HierarchicalVariable;
 import net.ssehub.kernel_haven.variability_model.VariabilityModel;
+import net.ssehub.kernel_haven.variability_model.VariabilityModelDescriptor.Attribute;
+import net.ssehub.kernel_haven.variability_model.VariabilityVariable;
 
 /**
  * Feature Model extractor for xfm Files.
@@ -41,14 +50,52 @@ public class PsFmExtractor extends AbstractVariabilityModelExtractor {
     }
 
     @Override
-    protected @Nullable VariabilityModel runOnFile(@NonNull File target) throws ExtractorException {
+    protected @Nullable VariabilityModel runOnFile(@NonNull File target) {
         XMLParser fm1 = new XMLParser(xfmFile);
-        return null;
+        
+        //Empty because there is no constraint file
+        File constraintFile = new File("empty.file");
+        
+        //create Map to store VariabilityVariable
+        Map<@NonNull String, VariabilityVariable> variables = new HashMap<>();
+        
+        NodeList nodeList = null;
+        try {
+            nodeList = fm1.getCmElement();
+        } catch (ParserConfigurationException e1) {
+            // TODO Auto-generated catch block
+            e1.printStackTrace();
+        } catch (SAXException e1) {
+            // TODO Auto-generated catch block
+            e1.printStackTrace();
+        } catch (IOException e1) {
+            // TODO Auto-generated catch block
+            e1.printStackTrace();
+        }
+        
+        for (int i = 0; i < nodeList.getLength(); i++) {
+            try {
+                variables.put(constraintFile.toString(),
+                        new HierarchicalVariable(fm1.getName(nodeList.item(i)), fm1.getType(nodeList.item(i))));
+            } catch (ParserConfigurationException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            } catch (SAXException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        
+        VariabilityModel result = new VariabilityModel(constraintFile, variables);
+        result.getDescriptor().addAttribute(Attribute.HIERARCHICAL);
+        return result;
     }
 
     @Override
     protected @NonNull String getName() {
         return "PsFmExtractor";
     }
-
 }
