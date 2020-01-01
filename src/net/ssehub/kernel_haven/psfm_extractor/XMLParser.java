@@ -21,6 +21,8 @@ import java.io.IOException;
 import javax.xml.parsers.*;
 
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
@@ -41,13 +43,13 @@ class XMLParser {
     }
     
     /**
-     * Returns cm:elements Nodes from the xfm File.
+     * Returns cm:element Nodes from the xfm File.
      * @throws IOException 
      * @throws SAXException 
      * @throws ParserConfigurationException 
-     * @return NodeList containing <cm:element>  
+     * @return NodeList containing cm:element  
      */
-    private NodeList getCmElement() throws ParserConfigurationException, SAXException, IOException {
+    public NodeList getCmElement() throws ParserConfigurationException, SAXException, IOException {
         DocumentBuilderFactory dbf  =
                 DocumentBuilderFactory.newInstance();
         DocumentBuilder builder = dbf.newDocumentBuilder();
@@ -55,19 +57,39 @@ class XMLParser {
         doc.getDocumentElement();
         NodeList nodeList = doc.getElementsByTagName("cm:element");
         
-        
         return nodeList;
     }
     
     /**
-     * Parse the feature model from the xfmFile.
-     * @throws IOException 
-     * @throws SAXException 
-     * @throws ParserConfigurationException 
+     * Get the cm:name from the element node.
+     * @param node Node of which the name shall be returned.
+     * @return List with name of cm:element. Returns null when no name was found.
      */
-    public void parse() throws ParserConfigurationException, SAXException, IOException {
-        NodeList nList = this.getCmElement();
+    public String getName(Node node) {
+        Element e = (Element) node;
+        String name = null;
         
-        System.out.println(nList.getLength());
+        if (e.hasAttribute("cm:name")) {
+            name = e.getAttribute("cm:name");
+        } else {
+            System.err.print("Node has no attribute cm:name!");
+        }
+        return name;
+    }
+    
+    /**
+     * Get the ps:type from a cm:element.
+     * @param node Must be of type cm:element
+     * @return Returns the ps:type for given element.
+     */
+    public String getType(Node node) {
+        //get the child notes from cm:element, should be cm:relations
+        NodeList cNodes = node.getChildNodes();
+        //get the child nodes from cm:relations, should be cm:relation
+        Node relation = cNodes.item(1).getChildNodes().item(1);
+        
+        //retrieve attribute cm:type
+        Element e = (Element) relation;
+        return (e.getAttribute("cm:type"));
     }
 }
