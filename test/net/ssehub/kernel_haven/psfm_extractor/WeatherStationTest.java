@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 University of Hildesheim, Software Systems Engineering
+ * Copyright 2020 University of Hildesheim, Software Systems Engineering
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,24 +15,22 @@
  */
 package net.ssehub.kernel_haven.psfm_extractor;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
+import static org.junit.Assert.*;
 
 import org.junit.Test;
 
 /**
- * Tests the {@link Dummy} class. Remove if actual content is added.
+ * Tests the PsFmExtractor for the atomic feature models.
  *
- * @author Adam
+ * @author Calvin Hansch
  */
-public class DummyTest {
-
+public class WeatherStationTest {
+    
     /**
-     * Tests the calc method.
+     * Test with the WeatherStation.xfm feature model.
      */
     @Test
-    public void testDummyCalc() {
-        assertThat(Dummy.calc(2, 5), is(7));
+    public void testWS() {
+        fail("Not yet implemented");
     }
-    
 }
