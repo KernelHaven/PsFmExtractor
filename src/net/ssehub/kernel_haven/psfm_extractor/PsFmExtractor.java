@@ -74,19 +74,8 @@ public class PsFmExtractor extends AbstractVariabilityModelExtractor {
         }
         
         for (int i = 0; i < nodeList.getLength(); i++) {
-            try {
-                variables.put(constraintFile.toString(),
-                        new HierarchicalVariable(fm1.getName(nodeList.item(i)), fm1.getType(nodeList.item(i))));
-            } catch (ParserConfigurationException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            } catch (SAXException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            } catch (IOException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
+            variables.put(constraintFile.toString(), 
+                    new HierarchicalVariable(fm1.getName(nodeList.item(i)), fm1.getType(nodeList.item(i))));
         }
         
         VariabilityModel result = new VariabilityModel(constraintFile, variables);
