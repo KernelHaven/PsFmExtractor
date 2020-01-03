@@ -22,11 +22,11 @@ import org.junit.runners.Suite.SuiteClasses;
 /**
  * All tests for this plugin.
  *
- * @author Adam
+ * @author Calvin Hansch
  */
 @RunWith(Suite.class)
 @SuiteClasses({
-    DummyTest.class,
+    AtomicTests.class
 })
 public class AllTests {
 
