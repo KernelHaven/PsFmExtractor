@@ -59,27 +59,29 @@ public class PsFmExtractor extends AbstractVariabilityModelExtractor {
         //create Map to store VariabilityVariable
         Map<@NonNull String, VariabilityVariable> variables = new HashMap<>();
         
-        NodeList nodeList = null;
+        NodeList nodeList;
         try {
             nodeList = fm1.getCmElement();
-        } catch (ParserConfigurationException e1) {
+            
+            for (int i = 0; i < nodeList.getLength(); i++) {
+                variables.put(constraintFile.toString(), 
+                        new HierarchicalVariable(fm1.getName(nodeList.item(i)), fm1.getType(nodeList.item(i))));
+            }
+            
+        } catch (ParserConfigurationException e) {
             // TODO Auto-generated catch block
-            e1.printStackTrace();
-        } catch (SAXException e1) {
+            e.printStackTrace();
+        } catch (SAXException e) {
             // TODO Auto-generated catch block
-            e1.printStackTrace();
-        } catch (IOException e1) {
+            e.printStackTrace();
+        } catch (IOException e) {
             // TODO Auto-generated catch block
-            e1.printStackTrace();
-        }
-        
-        for (int i = 0; i < nodeList.getLength(); i++) {
-            variables.put(constraintFile.toString(), 
-                    new HierarchicalVariable(fm1.getName(nodeList.item(i)), fm1.getType(nodeList.item(i))));
+            e.printStackTrace();
         }
         
         VariabilityModel result = new VariabilityModel(constraintFile, variables);
         result.getDescriptor().addAttribute(Attribute.HIERARCHICAL);
+        
         return result;
     }
 
