@@ -66,7 +66,7 @@ public class AtomicTests {
         try {
             nlOr = xpOr.getCmElement();
             
-            // loop over every node and check whether on contains the cm:name "or"
+            // loop over every node and check whether one contains the cm:name "or"
             for (int i = 0; i < nlOr.getLength(); i++) {
                 Node n = nlOr.item(i);
                 Element e = (Element) n;
@@ -102,7 +102,7 @@ public class AtomicTests {
             nlOr = xpOr.getCmElement();
             
             /** 
-            * loop over every node and check whether on contains the cm:name "alternative", 
+            * loop over every node and check whether one contains the cm:name "alternative", 
             * this is expected to be NOT true.
             **/
             for (int i = 0; i < nlOr.getLength(); i++) {
@@ -138,7 +138,7 @@ public class AtomicTests {
         try {
             nlAlt = xpAlt.getCmElement();
             
-            // loop over every node and check whether on contains the cm:name "alternative"
+            // loop over every node and check whether one contains the cm:name "alternative"
             for (int i = 0; i < nlAlt.getLength(); i++) {
                 Node n = nlAlt.item(i);
                 Element e = (Element) n;                
@@ -172,7 +172,7 @@ public class AtomicTests {
         try {
             nlMan = xpMan.getCmElement();
             
-            // loop over every node and check whether on contains the cm:name "alternative"
+            // loop over every node and check whether one contains the cm:name "alternative"
             for (int i = 0; i < nlMan.getLength(); i++) {
                 Node n = nlMan.item(i);
                 Element e = (Element) n;                
@@ -206,7 +206,7 @@ public class AtomicTests {
         try {
             nlOpt = xpOpt.getCmElement();
             
-            // loop over every node and check whether on contains the cm:name "alternative"
+            // loop over every node and check whether one contains the cm:name "alternative"
             for (int i = 0; i < nlOpt.getLength(); i++) {
                 Node n = nlOpt.item(i);
                 Element e = (Element) n;                
