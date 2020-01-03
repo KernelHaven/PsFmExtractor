@@ -15,6 +15,7 @@
  */
 package net.ssehub.kernel_haven.psfm_extractor;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -85,6 +86,44 @@ public class AtomicTests {
         }
         
         assertTrue(containsOr);
+    }
+    
+    /**
+     * Test if the or-xfm does not contain an element with cm:name "alternative" to ensure that
+     * the positive test does not always yield true.
+     */
+    @Test
+    public void testOrNameNegative() {
+        XMLParser xpOr = new XMLParser(this.xfmOr);
+        NodeList nlOr = null;
+        Boolean containsOr = false;
+        
+        try {
+            nlOr = xpOr.getCmElement();
+            
+            /** 
+            * loop over every node and check whether on contains the cm:name "alternative", 
+            * this is expected to be NOT true.
+            **/
+            for (int i = 0; i < nlOr.getLength(); i++) {
+                Node n = nlOr.item(i);
+                Element e = (Element) n;
+                if (e.getAttribute("cm:name").contentEquals("alternative")) {
+                    containsOr = true;
+                }
+            }
+        } catch (ParserConfigurationException e) {
+            e.printStackTrace();
+            fail();
+        } catch (SAXException e) {
+            e.printStackTrace();
+            fail();
+        } catch (IOException e) {
+            e.printStackTrace();
+            fail();
+        }
+        
+        assertFalse(containsOr);
     }
     
     /**
