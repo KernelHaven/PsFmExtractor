@@ -26,8 +26,10 @@ import org.junit.runners.Suite.SuiteClasses;
  */
 @RunWith(Suite.class)
 @SuiteClasses({
-    AtomicTests.class
+    AtomicTests.class,
+    CarTest.class,
+    EmptyFileTest.class
 })
 public class AllTests {
-
+    
 }
