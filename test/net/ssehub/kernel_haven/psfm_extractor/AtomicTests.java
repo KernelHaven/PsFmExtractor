@@ -127,6 +127,61 @@ public class AtomicTests {
     }
     
     /**
+     * Test if the or-xfm contains an element with cm:name "or" of cm:type
+     * "ps:or", to verify that parser parses types correctly.
+     */
+    @Test
+    public void testOrType() {
+        XMLParser xpOr = new XMLParser(this.xfmOr);
+        NodeList nlOr = null;
+        Boolean ofTypeOr = false;
+        
+        try {
+            nlOr = xpOr.getCmElement();
+        } catch (ParserConfigurationException | SAXException | IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        
+        for (int i = 0; i < nlOr.getLength(); i++) {
+            Node n = nlOr.item(i);
+            
+            if (xpOr.getType(n).toLowerCase().contains("ps:or")) {
+                ofTypeOr = true;
+            }
+        }
+        
+        assertTrue(ofTypeOr);
+    }
+    
+    /**
+     * Verify that testOrType does not always return true.
+     */
+    @Test
+    public void testOrTypeNegative() {
+        XMLParser xpOr = new XMLParser(this.xfmOr);
+        NodeList nlOr = null;
+        Boolean ofTypeOr = false;
+        
+        try {
+            nlOr = xpOr.getCmElement();
+        } catch (ParserConfigurationException | SAXException | IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        
+        for (int i = 0; i < nlOr.getLength(); i++) {
+            Node n = nlOr.item(i);
+            
+            if (xpOr.getType(n).toLowerCase().contains("ps:somethingelse")) {
+                ofTypeOr = true;
+            }
+        }
+        
+        assertFalse(ofTypeOr);
+    }
+    
+    /**
      * Test the feature model with the "alternative" feature.
      */
     @Test
@@ -158,6 +213,34 @@ public class AtomicTests {
         }
         
         assertTrue(containsAlt);
+    }
+    
+    /**
+     * Test if the alternative-xfm contains an element with cm:name "alternative" of cm:type
+     * "ps:alternative", to verify that parser parses types correctly.
+     */
+    @Test
+    public void testAlternativeType() {
+        XMLParser xpAlt = new XMLParser(this.xfmAlternative);
+        NodeList nlAlt = null;
+        Boolean ofTypeAlt = false;
+        
+        try {
+            nlAlt = xpAlt.getCmElement();
+        } catch (ParserConfigurationException | SAXException | IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        
+        for (int i = 0; i < nlAlt.getLength(); i++) {
+            Node n = nlAlt.item(i);
+            
+            if (xpAlt.getType(n).toLowerCase().contains("ps:alternative")) {
+                ofTypeAlt = true;
+            }
+        }
+        
+        assertTrue(ofTypeAlt);
     }
     
     /**
@@ -195,6 +278,34 @@ public class AtomicTests {
     }
     
     /**
+     * Test if the mandatory-xfm contains an element with cm:name "mandatory" of cm:type
+     * "ps:mandatory", to verify that parser parses types correctly.
+     */
+    @Test
+    public void testMandatoryType() {
+        XMLParser xpMan = new XMLParser(this.xfmMandatory);
+        NodeList nlMan = null;
+        Boolean ofTypeMan = false;
+        
+        try {
+            nlMan = xpMan.getCmElement();
+        } catch (ParserConfigurationException | SAXException | IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        
+        for (int i = 0; i < nlMan.getLength(); i++) {
+            Node n = nlMan.item(i);
+            
+            if (xpMan.getType(n).toLowerCase().contains("ps:mandatory")) {
+                ofTypeMan = true;
+            }
+        }
+        
+        assertTrue(ofTypeMan);
+    }
+    
+    /**
      * Test the feature model with the "optional" feature.
      */
     @Test
@@ -227,5 +338,33 @@ public class AtomicTests {
         
         assertTrue(containsOpt);
     }
-
+    
+    /**
+     * Test if the optional-xfm contains an element with cm:name "optional" of cm:type
+     * "ps:optional", to verify that parser parses types correctly.
+     */
+    @Test
+    public void testOptionalType() {
+        XMLParser xpOpt = new XMLParser(this.xfmMandatory);
+        NodeList nlOpt = null;
+        Boolean ofTypeOpt = false;
+        
+        try {
+            nlOpt = xpOpt.getCmElement();
+        } catch (ParserConfigurationException | SAXException | IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        
+        for (int i = 0; i < nlOpt.getLength(); i++) {
+            Node n = nlOpt.item(i);
+            
+            if (xpOpt.getType(n).toLowerCase().contains("ps:mandatory")) {
+                ofTypeOpt = true;
+            }
+        }
+        
+        assertTrue(ofTypeOpt);
+    }
+    
 }
