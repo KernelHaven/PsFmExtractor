@@ -83,7 +83,7 @@ class XMLParser {
      * @return Returns the ps:type for given element.
      */
     public String getType(Node node) {
-        //get the child notes from cm:element, should be cm:relations
+        //get the child nodes from cm:element, should be cm:relations
         NodeList cNodes = node.getChildNodes();
         //get the child nodes from cm:relations, should be cm:relation
         Node relation = cNodes.item(1).getChildNodes().item(1);
@@ -91,5 +91,33 @@ class XMLParser {
         //retrieve attribute cm:type
         Element e = (Element) relation;
         return (e.getAttribute("cm:type"));
+    }
+    
+    /**
+     * Get the parent features of given feature.
+     * @param node The node of which the parent features should be returned
+     * @return The name of the parent feature
+     */
+    public String getParent(Node node) {
+        String parent = null;        
+        Element element = null;
+        
+        if (node.getNodeType() == 1) {
+            element = (Element) node;
+        } else {
+            System.err.println("Not a valid node!");
+        }
+        
+        NodeList relation = element.getElementsByTagName("cm:relation");
+        
+        // for every element of type cm:relation find those children that have type ps:parent
+        for (int i = 0; i < relation.getLength(); i++) {
+            Element currElement = (Element) relation.item(i);
+            if (currElement.getAttribute("cm:type").equals("ps:parent")) {
+                currElement.getElementsByTagName("cm:target");
+            }
+        }
+        
+        return parent;
     }
 }
