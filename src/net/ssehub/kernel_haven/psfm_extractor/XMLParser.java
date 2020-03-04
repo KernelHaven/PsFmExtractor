@@ -17,6 +17,7 @@ package net.ssehub.kernel_haven.psfm_extractor;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 
 import javax.xml.parsers.*;
 
@@ -109,15 +110,17 @@ class XMLParser {
         }
         
         NodeList relation = element.getElementsByTagName("cm:relation");
+        Node target = null;
         
         // for every element of type cm:relation find those children that have type ps:parent
         for (int i = 0; i < relation.getLength(); i++) {
             Element currElement = (Element) relation.item(i);
             if (currElement.getAttribute("cm:type").equals("ps:parent")) {
-                currElement.getElementsByTagName("cm:target");
+                // get the <cm:target> attribute which holds the parents id
+                target = currElement.getChildNodes().item(1);
             }
         }
-        
+        parent = target.getTextContent();
         return parent;
     }
 }
