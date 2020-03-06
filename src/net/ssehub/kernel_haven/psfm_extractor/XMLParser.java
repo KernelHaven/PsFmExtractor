@@ -27,12 +27,15 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
+import net.ssehub.kernel_haven.util.Logger;
+
 /**
  * XML Parser that reads an xfm file and creates a DOM from it.
  *
  * @author Calvin Hansch
  */
 class XMLParser {
+    private static final Logger LOGGER = Logger.get();
     private File xfmFile;
     
     /**
@@ -73,7 +76,7 @@ class XMLParser {
         if (e.hasAttribute("cm:name")) {
             name = e.getAttribute("cm:name");
         } else {
-            System.err.print("Node has no attribute cm:name!");
+            LOGGER.logError2("Node ", e, "has no attribute cm:name!");
         }
         return name;
     }
@@ -106,7 +109,7 @@ class XMLParser {
         if (node.getNodeType() == 1) {
             element = (Element) node;
         } else {
-            System.err.println("Not a valid node!");
+            LOGGER.logError2("Node ", node, "is not of type element!");
         }
         
         NodeList relation = element.getElementsByTagName("cm:relation");
