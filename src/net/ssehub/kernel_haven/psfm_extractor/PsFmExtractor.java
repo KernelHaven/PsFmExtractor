@@ -22,6 +22,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import javax.xml.parsers.ParserConfigurationException;
+
+import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
@@ -64,8 +66,10 @@ public class PsFmExtractor extends AbstractVariabilityModelExtractor {
             nodeList = fm1.getCmElement();
             
             for (int i = 0; i < nodeList.getLength(); i++) {
-                variables.put(constraintFile.toString(), 
-                        new HierarchicalVariable(fm1.getName(nodeList.item(i)), fm1.getType(nodeList.item(i))));
+                Node node = nodeList.item(i);
+                String name = fm1.getName(node);
+                HierarchicalVariable var = new HierarchicalVariable(name, fm1.getType(node));
+                variables.put(name, var);
             }
             
         } catch (ParserConfigurationException e) {
