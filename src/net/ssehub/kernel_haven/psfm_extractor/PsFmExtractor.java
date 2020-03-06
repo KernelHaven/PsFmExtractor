@@ -20,13 +20,12 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-
 import javax.xml.parsers.ParserConfigurationException;
 
+import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
-
 import net.ssehub.kernel_haven.SetUpException;
 import net.ssehub.kernel_haven.config.Configuration;
 import net.ssehub.kernel_haven.config.DefaultSettings;
@@ -60,6 +59,9 @@ public class PsFmExtractor extends AbstractVariabilityModelExtractor {
         
         //create Map to store VariabilityVariable
         Map<@NonNull String, VariabilityVariable> variables = new HashMap<>();
+        Map<VariabilityVariable, Element> elementMap = 
+                new HashMap<VariabilityVariable, Element>();
+        Map<String, String> idMap = new HashMap<String, String>();
         
         NodeList nodeList;
         try {
@@ -67,9 +69,36 @@ public class PsFmExtractor extends AbstractVariabilityModelExtractor {
             
             for (int i = 0; i < nodeList.getLength(); i++) {
                 Node node = nodeList.item(i);
+                
                 String name = fm1.getName(node);
-                HierarchicalVariable var = new HierarchicalVariable(name, fm1.getType(node));
+                HierarchicalVariable var = new HierarchicalVariable(name,
+                        fm1.getType(node));
                 variables.put(name, var);
+                Element currElement = (Element) node;
+                
+                /*
+                 *  save corresponding name and id for current node so we don't
+                 *  need to iterate over complete array later
+                 */
+                idMap.put(currElement.getAttribute("cm:id"), name);
+                /*
+                 *  save element id with corresponding Node so we
+                 *  don't need to iterate over complete array when finding the
+                 *  parents
+                 */
+                elementMap.put(var, (Element) node);
+            }
+            
+            for (VariabilityVariable var : variables.values()) {
+                Node varAsNode = elementMap.get(var);
+                String parentID = fm1.getParent(varAsNode);
+                
+                if (null != parentID) {
+                    String parentName = idMap.get(parentID);
+                    HierarchicalVariable parent = 
+                            (HierarchicalVariable) variables.get(parentName);
+                    ((HierarchicalVariable) var).setParent(parent);                  
+                }
             }
             
         } catch (ParserConfigurationException e) {

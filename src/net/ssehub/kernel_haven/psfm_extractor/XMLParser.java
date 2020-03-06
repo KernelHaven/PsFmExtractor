@@ -18,6 +18,8 @@ package net.ssehub.kernel_haven.psfm_extractor;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.xml.parsers.*;
 
@@ -102,8 +104,8 @@ class XMLParser {
      * @param node The node of which the parent features should be returned
      * @return The name of the parent feature
      */
-    public String getParent(Node node) {
-        String parent = null;        
+    public String getParent(Node node) {   
+        String parentID = null;
         Element element = null;
         
         if (node.getNodeType() == 1) {
@@ -118,12 +120,19 @@ class XMLParser {
         // for every element of type cm:relation find those children that have type ps:parent
         for (int i = 0; i < relation.getLength(); i++) {
             Element currElement = (Element) relation.item(i);
+            
             if (currElement.getAttribute("cm:type").equals("ps:parent")) {
                 // get the <cm:target> attribute which holds the parents id
                 target = currElement.getChildNodes().item(1);
             }
         }
-        parent = target.getTextContent();
-        return parent;
+
+        if (target != null) {
+            parentID = target.getTextContent();
+            // Strip ./ from id String
+            parentID = parentID.substring(2);
+        }
+        
+        return parentID;
     }
 }
