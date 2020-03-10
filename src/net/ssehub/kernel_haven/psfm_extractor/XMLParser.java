@@ -17,9 +17,6 @@ package net.ssehub.kernel_haven.psfm_extractor;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 
 import javax.xml.parsers.*;
 
@@ -87,16 +84,67 @@ class XMLParser {
      * Get the ps:type from a cm:element.
      * @param node Must be of type cm:element
      * @return Returns the ps:type for given element.
+     * @throws IOException 
+     * @throws SAXException 
+     * @throws ParserConfigurationException 
      */
-    public String getType(Node node) {
-        //get the child nodes from cm:element, should be cm:relations
-        NodeList cNodes = node.getChildNodes();
-        //get the child nodes from cm:relations, should be cm:relation
-        Node relation = cNodes.item(1).getChildNodes().item(1);
+    public String getType(Node node) throws ParserConfigurationException, SAXException, IOException {
+        String parentID = this.getParent(node);
         
-        //retrieve attribute cm:type
-        Element e = (Element) relation;
-        return (e.getAttribute("cm:type"));
+        if (parentID == null ) {
+            return "Root node has no parent!";
+        }
+        
+        Element parent = null;
+        
+        NodeList nodes = this.getCmElement();
+        
+        // find parent nodes since there the type of the children is stored
+        for (int i = 0; i < nodes.getLength(); i++) {
+            Element currElement = (Element) nodes.item(i);
+            String currID = currElement.getAttribute("cm:id");
+            if (currID.equals(parentID)) {
+                parent = currElement;
+                break; // we found the parent, no need to keep for running 
+            }
+        }
+        
+        NodeList children = null;
+        NodeList relations = parent.getElementsByTagName("cm:relations");
+        // get the ps:children
+        for (int i = 0; i < relations.getLength(); i++) {
+            Element currElement = (Element) relations.item(i);
+            String currElementClass = currElement.getAttribute("cm:class");
+            if (currElementClass.equals("ps:children")) {
+                children = currElement.getElementsByTagName("cm:relation");
+                break; //we found the children, no need to keep running
+            }
+        }
+        
+        String cmType = null;
+        
+        for (int i = 0; i < children.getLength(); i++) {
+            Node currChild = children.item(i);
+            NodeList targetList = currChild.getChildNodes();
+            /*
+             * check if cm:target contains our inital node, only then we know if
+             * the current type is correct
+             */
+            for (int j = 0; j < targetList.getLength(); j++) {
+                Node currTarget = targetList.item(j);
+                // get the ID which is in cm:target and strip "./" so it will
+                // match the node id
+                String targetContent = currTarget.getTextContent().substring(2);
+                // get the ID of our node which was passed as argument
+                String initNodeID = ((Element) node).getAttribute("cm:id");
+                if (targetContent.equals(initNodeID)) {
+                    cmType = ((Element) currChild).getAttribute("cm:type");
+                    break; // we found our node in the targets. No need to continue searching
+                }
+            }
+        }
+        
+        return (cmType);
     }
     
     /**
