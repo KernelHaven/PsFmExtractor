@@ -41,7 +41,7 @@ class XMLParser {
      * Create a new XMLParser.
      * @param xfmFile File to be parsed
      */
-    public XMLParser(File xfmFile) {
+    protected XMLParser(File xfmFile) {
         this.xfmFile = xfmFile;
     }
     
@@ -52,7 +52,7 @@ class XMLParser {
      * @throws ParserConfigurationException 
      * @return NodeList containing cm:element  
      */
-    public NodeList getCmElement() throws ParserConfigurationException, SAXException, IOException {
+    protected NodeList getCmElement() throws ParserConfigurationException, SAXException, IOException {
         DocumentBuilderFactory dbf  =
                 DocumentBuilderFactory.newInstance();
         DocumentBuilder builder = dbf.newDocumentBuilder();
@@ -68,7 +68,7 @@ class XMLParser {
      * @param node Node of which the name shall be returned.
      * @return List with name of cm:element. Returns null when no name was found.
      */
-    public String getName(Node node) {
+    protected String getName(Node node) {
         Element e = (Element) node;
         String name = null;
         
@@ -88,7 +88,7 @@ class XMLParser {
      * @throws SAXException 
      * @throws ParserConfigurationException 
      */
-    public String getType(Node node) throws ParserConfigurationException, SAXException, IOException {
+    protected String getType(Node node) throws ParserConfigurationException, SAXException, IOException {
         String parentID = this.getParent(node);
         
         if (parentID == null ) {
@@ -152,7 +152,7 @@ class XMLParser {
      * @param node The node of which the parent features should be returned
      * @return The name of the parent feature
      */
-    public String getParent(Node node) {   
+    protected String getParent(Node node) {   
         String parentID = null;
         Element element = null;
         
