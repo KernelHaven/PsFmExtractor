@@ -139,6 +139,8 @@ class XMLParser {
                 String initNodeID = ((Element) node).getAttribute("cm:id");
                 if (targetContent.equals(initNodeID)) {
                     cmType = ((Element) currChild).getAttribute("cm:type");
+                    // omit "ps:" from type to not conflict with MetricHaven config files
+                    cmType = cmType.substring(3);
                     break; // we found our node in the targets. No need to continue searching
                 }
             }
