@@ -21,10 +21,15 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Properties;
 import java.util.Scanner;
+import java.util.Set;
 
 import javax.xml.parsers.ParserConfigurationException;
 
+import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.w3c.dom.Element;
@@ -32,71 +37,97 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
+import net.ssehub.kernel_haven.SetUpException;
+import net.ssehub.kernel_haven.config.DefaultSettings;
+import net.ssehub.kernel_haven.test_utils.TestConfiguration;
+import net.ssehub.kernel_haven.util.Util;
+import net.ssehub.kernel_haven.util.null_checks.NonNull;
+import net.ssehub.kernel_haven.util.null_checks.NullHelpers;
+import net.ssehub.kernel_haven.variability_model.VariabilityModel;
+import net.ssehub.kernel_haven.variability_model.VariabilityVariable;
+
 /**
  * Test the PsFmExtractor class for the car feature model.
  *
  * @author Calvin Hansch
  */
 public class CarTest {
-    private File xfmCar; 
-    private List<String> attributeNames;
-    private List<String> attributeList;    
-
+    private static final @NonNull File RESOURCE_DIR = new File("testdata/tmp_res");
+    
     /**
-     * Setup Test.
-     * @throws FileNotFoundException 
+     * Creates the temporary resource dir.
      */
     @Before
-    public void initialize() throws FileNotFoundException {        
-        this.xfmCar = new File("testdata/xfm/Car.xfm");
-        this.attributeNames = new ArrayList<String>();
-        this.attributeList = new ArrayList<String>();
-        
-        Scanner scanner = new Scanner(new File("testdata/xfm/carNameList.txt"));
-        while (scanner.hasNextLine()) {
-            String line = scanner.nextLine();
-            this.attributeList.add(line);
-        }
-        scanner.close();
+    public void createTmpRes() {
+        RESOURCE_DIR.mkdir();
     }
     
     /**
-     * Check if all attribute names listed in testdata/xfm/carNameList.txt 
-     * are found by the extractor.
+     * Deletes the temporary resource directory.
+     * 
+     * @throws IOException If deleting fails.
      */
-    @Test
-    public void testCarNames() {
-        XMLParser xpCar = new XMLParser(this.xfmCar);
-        NodeList nlCar = null;
+    @After
+    public void deleteTmpRes() throws IOException {
+        Util.deleteFolder(RESOURCE_DIR);
+    }
+    
+    /**
+     * Load the xfm models from testdata directory.
+     * @param testModel The model that the parsing should be tested for.
+     * @throws SetUpException 
+     * @return Returns the variability model created by the PsFm Extractor.
+     */
+    private VariabilityModel loadModel(File testModel) throws SetUpException {
+        Assert.assertTrue("Model for testing does not exist: " + testModel.getAbsolutePath(), testModel.exists());
         
+        // Create a configuration for testing
+        Properties props = new Properties();
+        props.setProperty("resource_dir", RESOURCE_DIR.getPath());
+        props.setProperty(DefaultSettings.VARIABILITY_INPUT_FILE.getKey(), testModel.getPath());
+        
+        TestConfiguration config = null;
         try {
-            nlCar = xpCar.getCmElement();
-            
-            // loop over every node and check whether one contains the cm:name "or"
-            for (int i = 0; i < nlCar.getLength(); i++) {
-                Node n = nlCar.item(i);
-                Element e = (Element) n;
-                this.attributeNames.add(e.getAttribute("cm:name"));
-                
-            }
-        } catch (ParserConfigurationException e) {
-            e.printStackTrace();
-            fail();
-        } catch (SAXException e) {
-            e.printStackTrace();
-            fail();
-        } catch (IOException e) {
-            e.printStackTrace();
-            fail();
+            config = new TestConfiguration(props);
+        } catch (SetUpException e) {
+            Assert.fail("Could not create configuration for testing with XFM=" + testModel.getAbsolutePath());
         }
         
-        /*
-         * remove all found names from list of known names, if the result is empty
-         * we found all
-         */
-        attributeList.removeAll(attributeNames);
-        
-        assert (attributeList.isEmpty());
+        // Run extractor
+        PsFmExtractor extractor = new PsFmExtractor();
+        extractor.init(NullHelpers.notNull(config));
+        return  extractor.runOnFile(testModel);
     }
-
+    
+    /** 
+     * Test whether the complex "car" model is parsed correctly.
+     * @throws SetUpException 
+     */
+    @Test
+    public void testOR() throws SetUpException {
+        VariabilityModel varModel = loadModel(new File("testdata/xfm/Car.xfm"));
+        Map<String, VariabilityVariable> varMap = varModel.getVariableMap();
+        Scanner scanner;
+        try {
+            scanner = new Scanner(new File("testdata/xfm/carList.csv"));
+            //Read ";" separated csv and split each line into variable name and type.
+            while (scanner.hasNextLine()) {
+                String line = scanner.nextLine();
+                String[] var = line.split(";");
+                String varName = var[0];
+                String varType = var[1];
+                
+                // check if variable name is contained in VariabilityModel
+                assertTrue("Variable not contained in Variability Model",
+                        varMap.containsKey(varName));
+                
+                //check if correct type was parsed for a given variable
+                assertEquals("Type missmatch in parsed and expected variable type",
+                        varType, varMap.get(varName).getType());
+            }
+        } catch (FileNotFoundException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
 }
