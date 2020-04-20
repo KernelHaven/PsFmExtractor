@@ -15,21 +15,20 @@
  */
 package net.ssehub.kernel_haven.psfm_extractor;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
 import java.io.File;
 import java.io.IOException;
+import java.util.Properties;
 
-import javax.xml.parsers.ParserConfigurationException;
+import org.junit.*;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
+import net.ssehub.kernel_haven.SetUpException;
+import net.ssehub.kernel_haven.config.DefaultSettings;
+import net.ssehub.kernel_haven.test_utils.TestConfiguration;
+import net.ssehub.kernel_haven.util.Util;
+import net.ssehub.kernel_haven.util.null_checks.NonNull;
+import net.ssehub.kernel_haven.util.null_checks.NullHelpers;
+import net.ssehub.kernel_haven.variability_model.VariabilityModel;
+import net.ssehub.kernel_haven.variability_model.VariabilityVariable;
 
 /**
  * Tests the PsFmExtractor for the atomic feature models.
@@ -37,334 +36,110 @@ import org.xml.sax.SAXException;
  * @author Calvin Hansch
  */
 public class AtomicTests {
-    private File xfmOr;
-    private File xfmAlternative;
-    private File xfmMandatory;
-    private File xfmOptional;
+    private static final @NonNull File RESOURCE_DIR = new File("testdata/tmp_res");
     
     /**
-     * Initialize test.
+     * Creates the temporary resource dir.
      */
     @Before
-    public void init() {
-        this.xfmOr = new File("testdata/xfm/or.xfm");
-        this.xfmAlternative = new File("testdata/xfm/alternative.xfm");
-        this.xfmMandatory = new File("testdata/xfm/mandatory.xfm");
-        this.xfmOptional = new File("testdata/xfm/optional.xfm");
+    public void createTmpRes() {
+        RESOURCE_DIR.mkdir();
     }
     
     /**
-     * Test if the or-xfm contains an element with cm:name "or" to ensure that
-     * the parser correctly parses the xfm file.
+     * Deletes the temporary resource directory.
+     * 
+     * @throws IOException If deleting fails.
      */
-    @Test
-    public void testOrName() {
-        XMLParser xpOr = new XMLParser(this.xfmOr);
-        NodeList nlOr = null;
-        Boolean containsOr = false;
-        
-        try {
-            nlOr = xpOr.getCmElement();
-            
-            // loop over every node and check whether one contains the cm:name "or"
-            for (int i = 0; i < nlOr.getLength(); i++) {
-                Node n = nlOr.item(i);
-                Element e = (Element) n;
-                if (e.getAttribute("cm:name").contentEquals("or")) {
-                    containsOr = true;
-                }
-            }
-        } catch (ParserConfigurationException e) {
-            e.printStackTrace();
-            fail();
-        } catch (SAXException e) {
-            e.printStackTrace();
-            fail();
-        } catch (IOException e) {
-            e.printStackTrace();
-            fail();
-        }
-        
-        assertTrue(containsOr);
+    @After
+    public void deleteTmpRes() throws IOException {
+        Util.deleteFolder(RESOURCE_DIR);
     }
     
     /**
-     * Test if the or-xfm does not contain an element with cm:name "alternative" to ensure that
-     * the positive test does not always yield true.
+     * Load the xfm models from testdata directory.
+     * @param testModel The model that the parsing should be tested for.
+     * @throws SetUpException 
+     * @return Returns the variability model created by the PsFm Extractor.
      */
-    @Test
-    public void testOrNameNegative() {
-        XMLParser xpOr = new XMLParser(this.xfmOr);
-        NodeList nlOr = null;
-        Boolean containsOr = false;
+    private VariabilityModel loadModel(File testModel) throws SetUpException {
+        Assert.assertTrue("Model for testing does not exist: " + testModel.getAbsolutePath(), testModel.exists());
         
+        // Create a configuration for testing
+        Properties props = new Properties();
+        props.setProperty("resource_dir", RESOURCE_DIR.getPath());
+        props.setProperty(DefaultSettings.VARIABILITY_INPUT_FILE.getKey(), testModel.getPath());
+        
+        TestConfiguration config = null;
         try {
-            nlOr = xpOr.getCmElement();
-            
-            /** 
-            * loop over every node and check whether one contains the cm:name "alternative", 
-            * this is expected to be NOT true.
-            **/
-            for (int i = 0; i < nlOr.getLength(); i++) {
-                Node n = nlOr.item(i);
-                Element e = (Element) n;
-                if (e.getAttribute("cm:name").contentEquals("alternative")) {
-                    containsOr = true;
-                }
-            }
-        } catch (ParserConfigurationException e) {
-            e.printStackTrace();
-            fail();
-        } catch (SAXException e) {
-            e.printStackTrace();
-            fail();
-        } catch (IOException e) {
-            e.printStackTrace();
-            fail();
+            config = new TestConfiguration(props);
+        } catch (SetUpException e) {
+            Assert.fail("Could not create configuration for testing with XFM=" + testModel.getAbsolutePath());
         }
         
-        assertFalse(containsOr);
+        // Run extractor
+        PsFmExtractor extractor = new PsFmExtractor();
+        extractor.init(NullHelpers.notNull(config));
+        return  extractor.runOnFile(testModel);
     }
     
-    /**
-     * Test if the or-xfm contains an element with cm:name "or" of cm:type
-     * "ps:or", to verify that parser parses types correctly.
+    /** 
+     * Test whether atomic "or" model is parsed correctly.
+     * @throws SetUpException 
      */
     @Test
-    public void testOrType() {
-        XMLParser xpOr = new XMLParser(this.xfmOr);
-        NodeList nlOr = null;
-        Boolean ofTypeOr = false;
-        
-        try {
-            nlOr = xpOr.getCmElement();
-        } catch (ParserConfigurationException | SAXException | IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-        
-        for (int i = 0; i < nlOr.getLength(); i++) {
-            Node n = nlOr.item(i);
-            
-            if (xpOr.getType(n).toLowerCase().contains("ps:or")) {
-                ofTypeOr = true;
-            }
-        }
-        
-        assertTrue(ofTypeOr);
+    public void testOR() throws SetUpException {
+        VariabilityModel varModel = loadModel(new File("testdata/xfm/testOr.xfm"));
+        VariabilityVariable var = varModel.getVariableMap().get("or");
+        Assert.assertNotNull("Tested variable not found.", var);
+        Assert.assertEquals("Tested variable is not of extected type", "or", var.getType().toLowerCase());
     }
     
-    /**
-     * Verify that testOrType does not always return true.
+    /** 
+     * Run a negative test to ensure that testOr() does not always evaluate true.
+     * @throws SetUpException 
      */
     @Test
-    public void testOrTypeNegative() {
-        XMLParser xpOr = new XMLParser(this.xfmOr);
-        NodeList nlOr = null;
-        Boolean ofTypeOr = false;
-        
-        try {
-            nlOr = xpOr.getCmElement();
-        } catch (ParserConfigurationException | SAXException | IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-        
-        for (int i = 0; i < nlOr.getLength(); i++) {
-            Node n = nlOr.item(i);
-            
-            if (xpOr.getType(n).toLowerCase().contains("ps:somethingelse")) {
-                ofTypeOr = true;
-            }
-        }
-        
-        assertFalse(ofTypeOr);
+    public void negativeTestOR() throws SetUpException {
+        VariabilityModel varModel = loadModel(new File("testdata/xfm/testAlternative.xfm"));
+        VariabilityVariable var = varModel.getVariableMap().get("alternative");
+        Assert.assertNotNull("Tested variable not found.", var);
+        Assert.assertNotEquals("Tested variable is not of extected type", "or", var.getType().toLowerCase());
     }
     
-    /**
-     * Test the feature model with the "alternative" feature.
+    /** 
+     * Test whether atomic "alternative" model is parsed correctly.
+     * @throws SetUpException 
      */
     @Test
-    public void testAlternativeName() {
-        XMLParser xpAlt = new XMLParser(this.xfmAlternative);
-        NodeList nlAlt = null;
-        Boolean containsAlt = false;
-        
-        try {
-            nlAlt = xpAlt.getCmElement();
-            
-            // loop over every node and check whether one contains the cm:name "alternative"
-            for (int i = 0; i < nlAlt.getLength(); i++) {
-                Node n = nlAlt.item(i);
-                Element e = (Element) n;                
-                if (e.getAttribute("cm:name").contentEquals("alternative")) {
-                    containsAlt = true;
-                }
-            }
-        } catch (ParserConfigurationException e) {
-            e.printStackTrace();
-            fail();
-        } catch (SAXException e) {
-            e.printStackTrace();
-            fail();
-        } catch (IOException e) {
-            e.printStackTrace();
-            fail();
-        }
-        
-        assertTrue(containsAlt);
+    public void testAlternative() throws SetUpException {
+        VariabilityModel varModel = loadModel(new File("testdata/xfm/testAlternative.xfm"));
+        VariabilityVariable var = varModel.getVariableMap().get("alternative");
+        Assert.assertNotNull("Tested variable not found.", var);
+        Assert.assertEquals("Tested variable is not of extected type", "alternative", var.getType().toLowerCase());
     }
     
-    /**
-     * Test if the alternative-xfm contains an element with cm:name "alternative" of cm:type
-     * "ps:alternative", to verify that parser parses types correctly.
+    /** 
+     * Test whether atomic "mandatory" model is parsed correctly.
+     * @throws SetUpException 
      */
     @Test
-    public void testAlternativeType() {
-        XMLParser xpAlt = new XMLParser(this.xfmAlternative);
-        NodeList nlAlt = null;
-        Boolean ofTypeAlt = false;
-        
-        try {
-            nlAlt = xpAlt.getCmElement();
-        } catch (ParserConfigurationException | SAXException | IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-        
-        for (int i = 0; i < nlAlt.getLength(); i++) {
-            Node n = nlAlt.item(i);
-            
-            if (xpAlt.getType(n).toLowerCase().contains("ps:alternative")) {
-                ofTypeAlt = true;
-            }
-        }
-        
-        assertTrue(ofTypeAlt);
+    public void testMandatory() throws SetUpException {
+        VariabilityModel varModel = loadModel(new File("testdata/xfm/testMandatory.xfm"));
+        VariabilityVariable var = varModel.getVariableMap().get("mandatory");
+        Assert.assertNotNull("Tested variable not found.", var);
+        Assert.assertEquals("Tested variable is not of extected type", "mandatory", var.getType().toLowerCase());
     }
     
-    /**
-     * Test the feature model with the "mandatory" feature.
+    /** 
+     * Test whether atomic "Optional" model is parsed correctly.
+     * @throws SetUpException 
      */
     @Test
-    public void testMandatoryName() {
-        XMLParser xpMan = new XMLParser(this.xfmMandatory);
-        NodeList nlMan = null;
-        Boolean containsMan = false;
-        
-        try {
-            nlMan = xpMan.getCmElement();
-            
-            // loop over every node and check whether one contains the cm:name "alternative"
-            for (int i = 0; i < nlMan.getLength(); i++) {
-                Node n = nlMan.item(i);
-                Element e = (Element) n;                
-                if (e.getAttribute("cm:name").contentEquals("mandatory")) {
-                    containsMan = true;
-                }
-            }
-        } catch (ParserConfigurationException e) {
-            e.printStackTrace();
-            fail();
-        } catch (SAXException e) {
-            e.printStackTrace();
-            fail();
-        } catch (IOException e) {
-            e.printStackTrace();
-            fail();
-        }
-        
-        assertTrue(containsMan);
+    public void testOptional() throws SetUpException {
+        VariabilityModel varModel = loadModel(new File("testdata/xfm/testOptional.xfm"));
+        VariabilityVariable var = varModel.getVariableMap().get("optional");
+        Assert.assertNotNull("Tested variable not found.", var);
+        Assert.assertEquals("Tested variable is not of extected type", "optional", var.getType().toLowerCase());
     }
-    
-    /**
-     * Test if the mandatory-xfm contains an element with cm:name "mandatory" of cm:type
-     * "ps:mandatory", to verify that parser parses types correctly.
-     */
-    @Test
-    public void testMandatoryType() {
-        XMLParser xpMan = new XMLParser(this.xfmMandatory);
-        NodeList nlMan = null;
-        Boolean ofTypeMan = false;
-        
-        try {
-            nlMan = xpMan.getCmElement();
-        } catch (ParserConfigurationException | SAXException | IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-        
-        for (int i = 0; i < nlMan.getLength(); i++) {
-            Node n = nlMan.item(i);
-            
-            if (xpMan.getType(n).toLowerCase().contains("ps:mandatory")) {
-                ofTypeMan = true;
-            }
-        }
-        
-        assertTrue(ofTypeMan);
-    }
-    
-    /**
-     * Test the feature model with the "optional" feature.
-     */
-    @Test
-    public void testOptionalName() {
-        XMLParser xpOpt = new XMLParser(this.xfmOptional);
-        NodeList nlOpt = null;
-        Boolean containsOpt = false;
-        
-        try {
-            nlOpt = xpOpt.getCmElement();
-            
-            // loop over every node and check whether one contains the cm:name "alternative"
-            for (int i = 0; i < nlOpt.getLength(); i++) {
-                Node n = nlOpt.item(i);
-                Element e = (Element) n;                
-                if (e.getAttribute("cm:name").contentEquals("optional")) {
-                    containsOpt = true;
-                }
-            }
-        } catch (ParserConfigurationException e) {
-            e.printStackTrace();
-            fail();
-        } catch (SAXException e) {
-            e.printStackTrace();
-            fail();
-        } catch (IOException e) {
-            e.printStackTrace();
-            fail();
-        }
-        
-        assertTrue(containsOpt);
-    }
-    
-    /**
-     * Test if the optional-xfm contains an element with cm:name "optional" of cm:type
-     * "ps:optional", to verify that parser parses types correctly.
-     */
-    @Test
-    public void testOptionalType() {
-        XMLParser xpOpt = new XMLParser(this.xfmMandatory);
-        NodeList nlOpt = null;
-        Boolean ofTypeOpt = false;
-        
-        try {
-            nlOpt = xpOpt.getCmElement();
-        } catch (ParserConfigurationException | SAXException | IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-        
-        for (int i = 0; i < nlOpt.getLength(); i++) {
-            Node n = nlOpt.item(i);
-            
-            if (xpOpt.getType(n).toLowerCase().contains("ps:mandatory")) {
-                ofTypeOpt = true;
-            }
-        }
-        
-        assertTrue(ofTypeOpt);
-    }
-    
 }
