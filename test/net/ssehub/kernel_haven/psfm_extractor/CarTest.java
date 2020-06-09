@@ -15,34 +15,22 @@
  */
 package net.ssehub.kernel_haven.psfm_extractor;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Scanner;
-import java.util.Set;
 
-import javax.xml.parsers.ParserConfigurationException;
-
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 import net.ssehub.kernel_haven.SetUpException;
-import net.ssehub.kernel_haven.config.DefaultSettings;
-import net.ssehub.kernel_haven.test_utils.TestConfiguration;
-import net.ssehub.kernel_haven.util.Util;
-import net.ssehub.kernel_haven.util.null_checks.NonNull;
-import net.ssehub.kernel_haven.util.null_checks.NullHelpers;
 import net.ssehub.kernel_haven.variability_model.VariabilityModel;
 import net.ssehub.kernel_haven.variability_model.VariabilityVariable;
 
@@ -50,84 +38,76 @@ import net.ssehub.kernel_haven.variability_model.VariabilityVariable;
  * Test the PsFmExtractor class for the car feature model.
  *
  * @author Calvin Hansch
+ * @author El-Sharkawy
  */
-public class CarTest {
-    private static final @NonNull File RESOURCE_DIR = new File("testdata/tmp_res");
+@RunWith(Parameterized.class)
+public class CarTest extends AbstractModelTest {
+    private static final VariabilityModel MODEL = loadModel(new File("testdata/xfm/Car.xfm"));
     
+    private String variableName;
+    private String type;
+    private int nReferencedVars;
+    private int nReferncesToVar;
+    private int nestingDepth;
+
     /**
-     * Creates the temporary resource dir.
+     * Constructor used by {@link #data()} method.
+     * @param variableName The expected name of the variable.
+     * @param type The expected type of the variable
+     * @param nReferencedVars The expected number of other variables referenced by the tested variable
+     * @param nReferncesToVar The expected number of variables that reference the tested variable
+     * @param nestingDepth The expected nesting depth of the variable
      */
-    @Before
-    public void createTmpRes() {
-        RESOURCE_DIR.mkdir();
+    public CarTest(String variableName, String type, int nReferencedVars, int nReferncesToVar, int nestingDepth) {
+        this.variableName = variableName;
+        this.type = type;
+        this.nReferencedVars = nReferencedVars;
+        this.nReferncesToVar = nReferncesToVar;
+        this.nestingDepth = nestingDepth;
     }
     
     /**
-     * Deletes the temporary resource directory.
-     * 
-     * @throws IOException If deleting fails.
+     * Provides the test data to be tested.
+     * @return Each lines represents one test
      */
-    @After
-    public void deleteTmpRes() throws IOException {
-        Util.deleteFolder(RESOURCE_DIR);
+    @Parameters(name = "{index}: {0}")
+    public static Collection<Object[]> data() {
+        return Arrays.asList(new Object[][] {
+            // The root
+            {"Car", "mandatory", 0, 0, 0},
+            // Safety Functions
+            {"Car_Safety", "optional", 0, 0, 1},
+            {"Car_ABS", "optional", 0, 1, 2},
+            {"Car_ESP", "optional", 1, 0, 2},
+            // Brakes
+            {"Brakes", "mandatory", 0, 0, 1},
+            {"BrakeActuation", "mandatory", 0, 0, 2},
+            {"Electric", "alternative", 0, 0, 3},
+            {"Electrohydraulic", "alternative", 0, 0, 3},
+            {"Hydraulisch", "alternative", 0, 0, 3},
+            {"Rear", "mandatory", 0, 0, 2},
+            {"Disc_rear", "alternative", 0, 0, 3},
+            {"Drum_rear", "alternative", 0, 0, 3},
+            {"Front", "mandatory", 0, 0, 2},
+            {"Disc_front", "alternative", 0, 0, 3},
+            {"Drum_front", "alternative", 0, 0, 3},
+            // Gear Box
+            {"Gearbox", "mandatory", 0, 0, 1},
+            {"Automatic", "or", 0, 0, 2},
+            {"Manual", "or", 0, 0, 2},
+            {"Gears", "mandatory", 0, 0, 2},
+            // Engine 
+            {"Engine", "mandatory", 0, 0, 1},
+            {"Diesel", "alternative", 0, 0, 2},
+            {"Gasoline", "alternative", 0, 0, 2},
+        });
     }
     
     /**
-     * Load the xfm models from testdata directory.
-     * @param testModel The model that the parsing should be tested for.
-     * @throws SetUpException 
-     * @return Returns the variability model created by the PsFm Extractor.
-     */
-    private VariabilityModel loadModel(File testModel) throws SetUpException {
-        Assert.assertTrue("Model for testing does not exist: " + testModel.getAbsolutePath(), testModel.exists());
-        
-        // Create a configuration for testing
-        Properties props = new Properties();
-        props.setProperty("resource_dir", RESOURCE_DIR.getPath());
-        props.setProperty(DefaultSettings.VARIABILITY_INPUT_FILE.getKey(), testModel.getPath());
-        
-        TestConfiguration config = null;
-        try {
-            config = new TestConfiguration(props);
-        } catch (SetUpException e) {
-            Assert.fail("Could not create configuration for testing with XFM=" + testModel.getAbsolutePath());
-        }
-        
-        // Run extractor
-        PsFmExtractor extractor = new PsFmExtractor();
-        extractor.init(NullHelpers.notNull(config));
-        return  extractor.runOnFile(testModel);
-    }
-    
-    /** 
-     * Test whether the complex "car" model is parsed correctly.
-     * @throws SetUpException 
+     * Performs the test.
      */
     @Test
-    public void testOR() throws SetUpException {
-        VariabilityModel varModel = loadModel(new File("testdata/xfm/Car.xfm"));
-        Map<String, VariabilityVariable> varMap = varModel.getVariableMap();
-        Scanner scanner;
-        try {
-            scanner = new Scanner(new File("testdata/xfm/carList.csv"));
-            //Read ";" separated csv and split each line into variable name and type.
-            while (scanner.hasNextLine()) {
-                String line = scanner.nextLine();
-                String[] var = line.split(";");
-                String varName = var[0];
-                String varType = var[1];
-                
-                // check if variable name is contained in VariabilityModel
-                assertTrue("Variable not contained in Variability Model",
-                        varMap.containsKey(varName));
-                
-                //check if correct type was parsed for a given variable
-                assertEquals("Type missmatch in parsed and expected variable type",
-                        varType, varMap.get(varName).getType());
-            }
-        } catch (FileNotFoundException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+    public void test() {
+        assertVariableInModel(MODEL, variableName, type, nReferencedVars, nReferncesToVar, nestingDepth);
     }
 }

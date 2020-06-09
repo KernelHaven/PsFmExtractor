@@ -18,17 +18,24 @@ package net.ssehub.kernel_haven.psfm_extractor;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+
 import javax.xml.parsers.ParserConfigurationException;
 
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
+
 import net.ssehub.kernel_haven.SetUpException;
 import net.ssehub.kernel_haven.config.Configuration;
 import net.ssehub.kernel_haven.config.DefaultSettings;
+import net.ssehub.kernel_haven.util.ExtractorException;
 import net.ssehub.kernel_haven.util.null_checks.NonNull;
 import net.ssehub.kernel_haven.util.null_checks.Nullable;
 import net.ssehub.kernel_haven.variability_model.AbstractVariabilityModelExtractor;
@@ -51,28 +58,30 @@ public class PsFmExtractor extends AbstractVariabilityModelExtractor {
     }
 
     @Override
-    protected @Nullable VariabilityModel runOnFile(@NonNull File target) {
-        XMLParser fm1 = new XMLParser(xfmFile);
+    protected @Nullable VariabilityModel runOnFile(@NonNull File target) throws ExtractorException {
+        XMLParser fm;
+        try {
+            fm = new XMLParser(xfmFile);
+        } catch (ParserConfigurationException | SAXException | IOException e) {
+            throw new ExtractorException(e);
+        }
         
         //Empty because there is no constraint file
         File constraintFile = new File("empty.file");
         
         //create Map to store VariabilityVariable
         Map<@NonNull String, VariabilityVariable> variables = new HashMap<>();
-        Map<VariabilityVariable, Element> elementMap = 
-                new HashMap<VariabilityVariable, Element>();
+        Map<HierarchicalVariable, Element> elementMap =  new HashMap<HierarchicalVariable, Element>();
         Map<String, String> idMap = new HashMap<String, String>();
         
-        NodeList nodeList;
-        try {
-            nodeList = fm1.getCmElement();
+        // Creates Variability variables with name and type, but no relations/hierarchies
+        NodeList nodeList = fm.getCmElement();          
+        for (int i = 0; i < nodeList.getLength(); i++) {
+            Node node = nodeList.item(i);
             
-            for (int i = 0; i < nodeList.getLength(); i++) {
-                Node node = nodeList.item(i);
-                
-                String name = fm1.getName(node);
-                HierarchicalVariable var = new HierarchicalVariable(name,
-                        fm1.getType(node));
+            String name = fm.getName(node);
+            if (null != name) {
+                HierarchicalVariable var = new HierarchicalVariable(name, fm.getType(node));
                 variables.put(name, var);
                 Element currElement = (Element) node;
                 
@@ -81,36 +90,18 @@ public class PsFmExtractor extends AbstractVariabilityModelExtractor {
                  *  need to iterate over complete array later
                  */
                 idMap.put(currElement.getAttribute("cm:id"), name);
+               
                 /*
                  *  save element id with corresponding Node so we
                  *  don't need to iterate over complete array when finding the
                  *  parents
                  */
-                elementMap.put(var, (Element) node);
+                elementMap.put(var, currElement);
             }
-            
-            for (VariabilityVariable var : variables.values()) {
-                Node varAsNode = elementMap.get(var);
-                String parentID = fm1.getParent(varAsNode);
-                
-                if (null != parentID) {
-                    String parentName = idMap.get(parentID);
-                    HierarchicalVariable parent = 
-                            (HierarchicalVariable) variables.get(parentName);
-                    ((HierarchicalVariable) var).setParent(parent);                  
-                }
-            }
-            
-        } catch (ParserConfigurationException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        } catch (SAXException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
         }
+        
+        // Set hierarchy: This must be done from up to down
+        computeHierarchy(fm, variables, elementMap, idMap);
         
         VariabilityModel result = new VariabilityModel(constraintFile, variables);
         result.getDescriptor().addAttribute(Attribute.HIERARCHICAL);
@@ -118,6 +109,41 @@ public class PsFmExtractor extends AbstractVariabilityModelExtractor {
         return result;
     }
 
+    /**
+     * Computes the part of each {@link VariabilityVariable} of the {@link VariabilityModel}.
+     * @param fm The XML parser used to parse the XFM file.
+     * @param variables The map of variables created for the {@link VariabilityModel} (will be changed as side effect)
+     * @param elementMap A map containing of <tt>(variability variable, XML node)</tt>
+     * @param idMap A map containing of <tt>(XML ID, variability variable)</tt>
+     */
+    private void computeHierarchy(XMLParser fm, Map<@NonNull String, VariabilityVariable> variables,
+        Map<HierarchicalVariable, Element> elementMap, Map<String, String> idMap) {
+        
+        // Setting hierarchy must be done from up to down -> Sort elements to do this in correct order
+        List<VariabilityVariable> vars = new ArrayList<>(variables.values());
+        Comparator<VariabilityVariable> byLevel = new Comparator<VariabilityVariable>() {
+            @Override
+            public int compare(VariabilityVariable o1, VariabilityVariable o2) {
+                int level1 = fm.getNestingLevel(elementMap.get(o1));
+                int level2 = fm.getNestingLevel(elementMap.get(o2));
+                return Integer.compare(level1, level2);
+            }
+        };
+        Collections.sort(vars, byLevel);
+        
+        // Set the parents
+        for (VariabilityVariable var : vars) {
+            Node varAsNode = elementMap.get(var);
+            String parentID = fm.getParent(varAsNode);
+            
+            if (null != parentID) {
+                String parentName = idMap.get(parentID);
+                HierarchicalVariable parent =  (HierarchicalVariable) variables.get(parentName);
+                ((HierarchicalVariable) var).setParent(parent);                  
+            }
+        }
+    }
+    
     @Override
     protected @NonNull String getName() {
         return "PsFmExtractor";

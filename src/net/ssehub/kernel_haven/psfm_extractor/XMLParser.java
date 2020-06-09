@@ -17,8 +17,12 @@ package net.ssehub.kernel_haven.psfm_extractor;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
-import javax.xml.parsers.*;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -32,35 +36,63 @@ import net.ssehub.kernel_haven.util.Logger;
  * XML Parser that reads an xfm file and creates a DOM from it.
  *
  * @author Calvin Hansch
+ * @author El-Sharkawy
  */
 class XMLParser {
     private static final Logger LOGGER = Logger.get();
-    private File xfmFile;
+    private Document doc;
+    private Map<String, Element> nodes;
+    private Map<Node, Integer> hierarchies;
     
     /**
      * Create a new XMLParser.
      * @param xfmFile File to be parsed
+     * @throws IOException If any IO errors occur.
+     * @throws SAXException If any parse errors occur.
+     * @throws ParserConfigurationException If a DocumentBuilder
+     *      cannot be created which satisfies the configuration requested.
      */
-    protected XMLParser(File xfmFile) {
-        this.xfmFile = xfmFile;
+    protected XMLParser(File xfmFile) throws ParserConfigurationException, SAXException, IOException {
+        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+        DocumentBuilder builder = dbf.newDocumentBuilder();
+        doc = builder.parse(xfmFile);
+        doc.getDocumentElement();
+        nodes = new HashMap<>();
+        hierarchies = new HashMap<>();
+        
+        parse();
     }
     
     /**
-     * Returns cm:element Nodes from the xfm File.
-     * @throws IOException 
-     * @throws SAXException 
-     * @throws ParserConfigurationException 
-     * @return NodeList containing cm:element  
+     * Parsed information of the XML file once so that important information can be reused.
      */
-    protected NodeList getCmElement() throws ParserConfigurationException, SAXException, IOException {
-        DocumentBuilderFactory dbf  =
-                DocumentBuilderFactory.newInstance();
-        DocumentBuilder builder = dbf.newDocumentBuilder();
-        Document doc = builder.parse(xfmFile);
-        doc.getDocumentElement();
+    private void parse() {
         NodeList nodeList = doc.getElementsByTagName("cm:element");
+        for (int i = 0; i < nodeList.getLength(); i++) {
+            Element node = (Element) nodeList.item(i);
+            nodes.put(node.getAttribute("cm:id"), node);
+        }
         
-        return nodeList;
+        for (Element node : nodes.values()) {
+            hierarchies.put(node, computeNestingLevel(node));
+        }
+    }
+    
+    /**
+     * Returns the nesting level of the given node.
+     * @param node A feature of the feature model.
+     * @return It hierarchy beginning at 0.
+     */
+    public int getNestingLevel(Node node) {
+        return hierarchies.get(node);
+    }
+    
+    /**
+     * Returns <tt>cm:element</tt> Nodes from the xfm File.
+     * @return The NodeList containing all features
+     */
+    protected NodeList getCmElement() {
+        return doc.getElementsByTagName("cm:element");
     }
     
     /**
@@ -84,19 +116,16 @@ class XMLParser {
      * Get the ps:type from a cm:element.
      * @param node Must be of type cm:element
      * @return Returns the ps:type for given element.
-     * @throws IOException 
-     * @throws SAXException 
-     * @throws ParserConfigurationException 
      */
-    protected String getType(Node node) throws ParserConfigurationException, SAXException, IOException {
+    protected String getType(Node node) {
         String parentID = this.getParent(node);
         
         if (parentID == null ) {
-            return "Root node has no parent!";
+            // Root is always mandatory
+            return "mandatory";
         }
         
         Element parent = null;
-        
         NodeList nodes = this.getCmElement();
         
         // find parent nodes since there the type of the children is stored
@@ -127,7 +156,7 @@ class XMLParser {
             Node currChild = children.item(i);
             NodeList targetList = currChild.getChildNodes();
             /*
-             * check if cm:target contains our inital node, only then we know if
+             * check if cm:target contains our initial node, only then we know if
              * the current type is correct
              */
             for (int j = 0; j < targetList.getLength(); j++) {
@@ -146,15 +175,15 @@ class XMLParser {
             }
         }
         
-        return (cmType);
+        return cmType;
     }
     
     /**
      * Get the parent features of given feature.
      * @param node The node of which the parent features should be returned
-     * @return The name of the parent feature
+     * @return The ID of the parent feature or <tt>null</tt> if the node has no parent, i.e., is the root
      */
-    protected String getParent(Node node) {   
+    String getParent(Node node) {   
         String parentID = null;
         Element element = null;
         
@@ -184,5 +213,20 @@ class XMLParser {
         }
         
         return parentID;
+    }
+    
+    /**
+     * Computes the nesting level / hierarchy of a given node.
+     * @param node A feature of the feature model
+     * @return Its nesting level beginning at 0.
+     */
+    private int computeNestingLevel(Node node) {
+        int level = 0;
+        String parentID = getParent(node);
+        if (null != parentID) {
+            level = 1 + computeNestingLevel(nodes.get(parentID));
+        }
+        
+        return level;
     }
 }

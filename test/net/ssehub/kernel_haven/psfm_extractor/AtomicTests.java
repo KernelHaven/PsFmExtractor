@@ -24,6 +24,7 @@ import org.junit.*;
 import net.ssehub.kernel_haven.SetUpException;
 import net.ssehub.kernel_haven.config.DefaultSettings;
 import net.ssehub.kernel_haven.test_utils.TestConfiguration;
+import net.ssehub.kernel_haven.util.ExtractorException;
 import net.ssehub.kernel_haven.util.Util;
 import net.ssehub.kernel_haven.util.null_checks.NonNull;
 import net.ssehub.kernel_haven.util.null_checks.NullHelpers;
@@ -80,7 +81,15 @@ public class AtomicTests {
         // Run extractor
         PsFmExtractor extractor = new PsFmExtractor();
         extractor.init(NullHelpers.notNull(config));
-        return  extractor.runOnFile(testModel);
+        VariabilityModel result = null;
+        try {
+            result = extractor.runOnFile(testModel);
+        } catch (ExtractorException e) {
+            Assert.fail("Could not init extractor due to" + e.getMessage());
+        }
+        Assert.assertNotNull(result);
+        
+        return result;
     }
     
     /** 
