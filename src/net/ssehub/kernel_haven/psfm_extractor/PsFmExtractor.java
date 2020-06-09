@@ -22,8 +22,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.xml.parsers.ParserConfigurationException;
 
@@ -72,7 +74,7 @@ public class PsFmExtractor extends AbstractVariabilityModelExtractor {
         //create Map to store VariabilityVariable
         Map<@NonNull String, VariabilityVariable> variables = new HashMap<>();
         Map<HierarchicalVariable, Element> elementMap =  new HashMap<HierarchicalVariable, Element>();
-        Map<String, String> idMap = new HashMap<String, String>();
+        Map<String, HierarchicalVariable> idMap = new HashMap<>();
         
         // Creates Variability variables with name and type, but no relations/hierarchies
         NodeList nodeList = fm.getCmElement();          
@@ -89,7 +91,7 @@ public class PsFmExtractor extends AbstractVariabilityModelExtractor {
                  *  save corresponding name and id for current node so we don't
                  *  need to iterate over complete array later
                  */
-                idMap.put(currElement.getAttribute("cm:id"), name);
+                idMap.put(currElement.getAttribute("cm:id"), var);
                
                 /*
                  *  save element id with corresponding Node so we
@@ -103,8 +105,12 @@ public class PsFmExtractor extends AbstractVariabilityModelExtractor {
         // Set hierarchy: This must be done from up to down
         computeHierarchy(fm, variables, elementMap, idMap);
         
+        // Compute relations
+        computeRelations(fm, variables, elementMap, idMap);
+        
         VariabilityModel result = new VariabilityModel(constraintFile, variables);
         result.getDescriptor().addAttribute(Attribute.HIERARCHICAL);
+        result.getDescriptor().addAttribute(Attribute.CONSTRAINT_USAGE);
         
         return result;
     }
@@ -117,7 +123,7 @@ public class PsFmExtractor extends AbstractVariabilityModelExtractor {
      * @param idMap A map containing of <tt>(XML ID, variability variable)</tt>
      */
     private void computeHierarchy(XMLParser fm, Map<@NonNull String, VariabilityVariable> variables,
-        Map<HierarchicalVariable, Element> elementMap, Map<String, String> idMap) {
+        Map<HierarchicalVariable, Element> elementMap, Map<String, HierarchicalVariable> idMap) {
         
         // Setting hierarchy must be done from up to down -> Sort elements to do this in correct order
         List<VariabilityVariable> vars = new ArrayList<>(variables.values());
@@ -137,9 +143,42 @@ public class PsFmExtractor extends AbstractVariabilityModelExtractor {
             String parentID = fm.getParent(varAsNode);
             
             if (null != parentID) {
-                String parentName = idMap.get(parentID);
-                HierarchicalVariable parent =  (HierarchicalVariable) variables.get(parentName);
+                HierarchicalVariable parent = idMap.get(parentID);
                 ((HierarchicalVariable) var).setParent(parent);                  
+            }
+        }
+    }
+    
+    /**
+     * Computes relations between features created through constraints.
+     * @param fm The XML parser used to parse the XFM file.
+     * @param variables The map of variables created for the {@link VariabilityModel} (will be changed as side effect)
+     * @param elementMap A map containing of <tt>(variability variable, XML node)</tt>
+     * @param idMap A map containing of <tt>(XML ID, variability variable)</tt>
+     */
+    private void computeRelations(XMLParser fm, Map<@NonNull String, VariabilityVariable> variables,
+        Map<HierarchicalVariable, Element> elementMap, Map<String, HierarchicalVariable> idMap) {
+        
+        for (VariabilityVariable variable : variables.values()) {
+            Node varAsNode = elementMap.get(variable);
+            List<String> ids = fm.getReferencedVariables(varAsNode);
+            if (!ids.isEmpty()) {
+                Set<VariabilityVariable> referencedVars = variable.getVariablesUsedInConstraints();
+                if (null == referencedVars) {
+                    referencedVars = new HashSet<>();
+                }
+                for (String id : ids) {
+                    VariabilityVariable referencedVar = idMap.get(id);
+                    referencedVars.add(referencedVar);
+                    // Handle reverse relation
+                    Set<VariabilityVariable> referenceToVars = referencedVar.getUsedInConstraintsOfOtherVariables();
+                    if (null == referenceToVars) {
+                        referenceToVars = new HashSet<>();
+                    }
+                    referenceToVars.add(variable);
+                    referencedVar.setUsedInConstraintsOfOtherVariables(referenceToVars);
+                }
+                variable.setVariablesUsedInConstraints(referencedVars);
             }
         }
     }

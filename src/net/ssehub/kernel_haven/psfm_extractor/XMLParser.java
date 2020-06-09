@@ -17,7 +17,9 @@ package net.ssehub.kernel_haven.psfm_extractor;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -39,6 +41,14 @@ import net.ssehub.kernel_haven.util.Logger;
  * @author El-Sharkawy
  */
 class XMLParser {
+    
+    private static final String NAME_ATTRIBUTE = "cm:name";
+    private static final String ID_ATTRIBUTE = "cm:id";
+    private static final String CLASS_ATTRIBUTE = "cm:class";
+    
+    private static final String RELATIONS_TAG = "cm:relations";
+    private static final String RELATION_TAG = "cm:relation";
+    
     private static final Logger LOGGER = Logger.get();
     private Document doc;
     private Map<String, Element> nodes;
@@ -70,7 +80,7 @@ class XMLParser {
         NodeList nodeList = doc.getElementsByTagName("cm:element");
         for (int i = 0; i < nodeList.getLength(); i++) {
             Element node = (Element) nodeList.item(i);
-            nodes.put(node.getAttribute("cm:id"), node);
+            nodes.put(node.getAttribute(ID_ATTRIBUTE), node);
         }
         
         for (Element node : nodes.values()) {
@@ -104,8 +114,8 @@ class XMLParser {
         Element e = (Element) node;
         String name = null;
         
-        if (e.hasAttribute("cm:name")) {
-            name = e.getAttribute("cm:name");
+        if (e.hasAttribute(NAME_ATTRIBUTE)) {
+            name = e.getAttribute(NAME_ATTRIBUTE);
         } else {
             LOGGER.logError2("Node ", e, "has no attribute cm:name!");
         }
@@ -131,51 +141,94 @@ class XMLParser {
         // find parent nodes since there the type of the children is stored
         for (int i = 0; i < nodes.getLength(); i++) {
             Element currElement = (Element) nodes.item(i);
-            String currID = currElement.getAttribute("cm:id");
+            String currID = currElement.getAttribute(ID_ATTRIBUTE);
             if (currID.equals(parentID)) {
                 parent = currElement;
                 break; // we found the parent, no need to keep for running 
             }
         }
         
-        NodeList children = null;
-        NodeList relations = parent.getElementsByTagName("cm:relations");
-        // get the ps:children
-        for (int i = 0; i < relations.getLength(); i++) {
-            Element currElement = (Element) relations.item(i);
-            String currElementClass = currElement.getAttribute("cm:class");
-            if (currElementClass.equals("ps:children")) {
-                children = currElement.getElementsByTagName("cm:relation");
-                break; //we found the children, no need to keep running
-            }
-        }
-        
+        NodeList children = getReferencedElements(parent, "ps:children");
         String cmType = null;
-        
-        for (int i = 0; i < children.getLength(); i++) {
-            Node currChild = children.item(i);
-            NodeList targetList = currChild.getChildNodes();
-            /*
-             * check if cm:target contains our initial node, only then we know if
-             * the current type is correct
-             */
-            for (int j = 0; j < targetList.getLength(); j++) {
-                Node currTarget = targetList.item(j);
-                // get the ID which is in cm:target and strip "./" so it will
-                // match the node id
-                String targetContent = currTarget.getTextContent().substring(2);
-                // get the ID of our node which was passed as argument
-                String initNodeID = ((Element) node).getAttribute("cm:id");
-                if (targetContent.equals(initNodeID)) {
-                    cmType = ((Element) currChild).getAttribute("cm:type");
-                    // omit "ps:" from type to not conflict with MetricHaven config files
-                    cmType = cmType.substring(3);
-                    break; // we found our node in the targets. No need to continue searching
+
+        if (null != children) {
+            for (int i = 0; i < children.getLength(); i++) {
+                Node currChild = children.item(i);
+                NodeList targetList = currChild.getChildNodes();
+                /*
+                 * check if cm:target contains our initial node, only then we know if
+                 * the current type is correct
+                 */
+                for (int j = 0; j < targetList.getLength(); j++) {
+                    Node currTarget = targetList.item(j);
+                    // get the ID which is in cm:target and strip "./" so it will
+                    // match the node id
+                    String targetContent = currTarget.getTextContent().substring(2);
+                    // get the ID of our node which was passed as argument
+                    String initNodeID = ((Element) node).getAttribute(ID_ATTRIBUTE);
+                    if (targetContent.equals(initNodeID)) {
+                        cmType = ((Element) currChild).getAttribute("cm:type");
+                        // omit "ps:" from type to not conflict with MetricHaven config files
+                        cmType = cmType.substring(3);
+                        break; // we found our node in the targets. No need to continue searching
+                    }
                 }
             }
         }
         
         return cmType;
+    }
+    
+    /**
+     * Returns the {@link NodeList} of related elements of the specified relation class.
+     * @param node A feature holding potentially references to other features.
+     * @param classType The relation type, one of <tt>ps:dependencies</tt> or <tt>ps:children</tt>.
+     *      Must not be <tt>null</tt>.
+     * @return The related elements, maybe <tt>null</tt>.
+     */
+    private NodeList getReferencedElements(Node node, String classType) {
+        NodeList relations = ((Element) node).getElementsByTagName(RELATIONS_TAG);
+        NodeList children = null;
+        
+        for (int i = 0; i < relations.getLength() && null == children; i++) {
+            Element currElement = (Element) relations.item(i);
+            if (classType.equals(currElement.getAttribute(CLASS_ATTRIBUTE))) {
+                children = currElement.getElementsByTagName(RELATION_TAG);
+            }
+        }
+        
+        return children;
+    }
+    
+    /**
+     * Returns all variables which are referenced by a <tt>requires</tt> constraint.
+     * @param node A feature node.
+     * @return The list of IDs referenced through requires constraint.
+     */
+    public List<String> getReferencedVariables(Node node) {
+        List<String> referencedVariables = new ArrayList<>();
+        NodeList children = getReferencedElements(node, "ps:dependencies");
+        if (null != children) {
+            for (int i = 0; i < children.getLength(); i++) {
+                Element currChild = (Element) children.item(i);
+                String relationType = currChild.getAttribute("cm:type");
+                
+                if (null != relationType && "ps:requires".equals(relationType)) {
+                    NodeList targetList = currChild.getChildNodes();
+                    for (int j = 0; j < targetList.getLength(); j++) {
+                        Node target = targetList.item(j);
+                        String id = target.getTextContent();
+                        if (!id.isBlank()) {
+                            // Relation is between IDs is separated by a slash: /
+                            id = id.split("/")[1];
+                            referencedVariables.add(id);
+                        }
+                    }
+                }
+            }
+        }
+        
+        return referencedVariables;
     }
     
     /**
