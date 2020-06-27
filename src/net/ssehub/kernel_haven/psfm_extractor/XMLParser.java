@@ -218,7 +218,7 @@ class XMLParser {
                     for (int j = 0; j < targetList.getLength(); j++) {
                         Node target = targetList.item(j);
                         String id = target.getTextContent();
-                        if (!id.isBlank()) {
+                        if (!id.isEmpty()) {
                             // Relation is between IDs is separated by a slash: /
                             id = id.split("/")[1];
                             referencedVariables.add(id);
