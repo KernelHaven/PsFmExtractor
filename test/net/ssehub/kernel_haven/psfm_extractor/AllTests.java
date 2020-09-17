@@ -28,6 +28,7 @@ import org.junit.runners.Suite.SuiteClasses;
 @SuiteClasses({
     AtomicTests.class,
     CarTest.class,
+    WeatherStationTest.class,
     EmptyFileTest.class
 })
 public class AllTests {
