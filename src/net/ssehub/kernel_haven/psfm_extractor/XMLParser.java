@@ -33,6 +33,7 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 import net.ssehub.kernel_haven.util.Logger;
+import net.ssehub.kernel_haven.util.null_checks.NonNull;
 
 /**
  * XML Parser that reads an xfm file and creates a DOM from it.
@@ -127,6 +128,7 @@ class XMLParser {
      * @param node Must be of type cm:element
      * @return Returns the ps:type for given element.
      */
+    @NonNull
     protected String getType(Node node) {
         String parentID = this.getParent(node);
         
@@ -148,9 +150,10 @@ class XMLParser {
             }
         }
         
-        NodeList children = getReferencedElements(parent, "ps:children");
+        NodeList children = parent != null ? getReferencedElements(parent, "ps:children") : null;
         String cmType = null;
 
+        // May only be null if parent is null, but this was already handled at begin of method
         if (null != children) {
             for (int i = 0; i < children.getLength(); i++) {
                 Node currChild = children.item(i);
@@ -174,6 +177,11 @@ class XMLParser {
                     }
                 }
             }
+        }
+        
+        if (null == cmType) {
+            cmType = "UNKNOWN";
+            Logger.get().logError2("Could no determine feature type of ", node);
         }
         
         return cmType;
@@ -217,7 +225,7 @@ class XMLParser {
                     NodeList targetList = currChild.getChildNodes();
                     for (int j = 0; j < targetList.getLength(); j++) {
                         Node target = targetList.item(j);
-                        String id = target.getTextContent();
+                        String id = target.getTextContent().trim();
                         if (!id.isEmpty()) {
                             // Relation is between IDs is separated by a slash: /
                             id = id.split("/")[1];
